@@ -7,6 +7,7 @@ import Cloudfront from "./cloudfront";
 import ElasticSearch from "./elasticSearch";
 import FileManager from "./fileManager";
 import PageBuilder from "./pageBuilder";
+import FormBuilder from "./formBuilder";
 import PrerenderingService from "./prerenderingService";
 
 export default () => {
@@ -36,6 +37,14 @@ export default () => {
         primaryDynamodbTable: dynamoDb.table
     });
 
+    const formBuilder = new FormBuilder({
+        dynamoDbTable: dynamoDb.table,
+        elasticSearchDomain: elasticSearch.domain,
+        env: {
+            DEBUG: String(process.env.DEBUG)
+        }
+    });
+
     const api = new Graphql({
         env: {
             COGNITO_REGION: String(process.env.AWS_REGION),
@@ -49,7 +58,8 @@ export default () => {
             PRERENDERING_QUEUE_ADD_HANDLER: prerenderingService.functions.queue.add.arn,
             PRERENDERING_QUEUE_PROCESS_HANDLER: prerenderingService.functions.queue.process.arn,
             S3_BUCKET: fileManager.bucket.id,
-            WEBINY_LOGS_FORWARD_URL: String(process.env.WEBINY_LOGS_FORWARD_URL)
+            WEBINY_LOGS_FORWARD_URL: String(process.env.WEBINY_LOGS_FORWARD_URL),
+            FB_INSTALLATION_HANDLER: formBuilder.functions.installation.arn
         },
         primaryDynamodbTable: dynamoDb.table,
         elasticsearchDynamodbTable: elasticSearch.table,
@@ -118,6 +128,7 @@ export default () => {
         cognitoAppClientId: cognito.userPoolClient.id,
         updatePbSettingsFunction: pageBuilder.functions.updateSettings.arn,
         psQueueAdd: prerenderingService.functions.queue.add.arn,
-        psQueueProcess: prerenderingService.functions.queue.process.arn
+        psQueueProcess: prerenderingService.functions.queue.process.arn,
+        dynamoDbTable: dynamoDb.table.name
     };
 };

@@ -2,6 +2,7 @@
 export default {
     name: "webiny-js",
     cli: {
+        telemetry: false,
         plugins: async () => {
             /**
              * In webiny-js repo, we need to handle cases when packages are not yet built.
@@ -37,6 +38,6 @@ export default {
                 // If the whole promise fails, act as if there are no plugins.
                 return [];
             }
-        }
+        },
     }
 };

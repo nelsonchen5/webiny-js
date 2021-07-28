@@ -180,6 +180,12 @@ const plugin: GraphQLSchemaPlugin<FileManagerContext> = {
             },
             FmQuery: {
                 getFile(_, args: { id: string }, context) {
+                    context.i18nContent.locale
+                    context.security.getIdentity
+                    context.tenancy.getCurrentTenant
+
+                    const context.fileManager.files.getFile(args.id);
+
                     return resolve(() => context.fileManager.files.getFile(args.id));
                 },
                 async listFiles(_, args: FilesListOpts, context) {

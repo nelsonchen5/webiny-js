@@ -11351,6 +11351,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"api-form-builder-installation@workspace:api/code/formBuilder/installation":
+  version: 0.0.0-use.local
+  resolution: "api-form-builder-installation@workspace:api/code/formBuilder/installation"
+  dependencies:
+    "@webiny/api-form-builder": ^5.11.0
+    "@webiny/cli": ^5.11.0
+    "@webiny/db-dynamodb": ^5.11.0
+    "@webiny/handler-aws": ^5.11.0
+    "@webiny/handler-db": ^5.11.0
+    "@webiny/handler-logs": ^5.11.0
+    "@webiny/project-utils": ^5.11.0
+  languageName: unknown
+  linkType: soft
+
 "api-graphql@workspace:api/code/graphql":
   version: 0.0.0-use.local
   resolution: "api-graphql@workspace:api/code/graphql"

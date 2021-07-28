@@ -11,6 +11,7 @@
       "api/code/fileManager/*",
       "api/code/graphql",
       "api/code/headlessCMS",
+      "api/code/formBuilder/*",
       "api/code/pageBuilder/*",
       "api/code/prerenderingService/render",
       "api/code/prerenderingService/flush",

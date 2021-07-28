@@ -14,9 +14,25 @@ const plugin: GraphQLSchemaPlugin<FormBuilderContext> = {
                 error: FbError
             }
 
+            enum FbSystemInstallationStatusEnum {
+                pending
+                completed
+                error
+            }
+
+            type FbSystemInstallation {
+                status: FbSystemInstallationStatusEnum
+                error: FbError
+            }
+
+            type FbSystem {
+                version: String
+                installation: FbSystemInstallation
+            }
+
             type FbQuery {
                 # Get installed version
-                version: String
+                system: FbSystem
             }
 
             type FbMutation {
@@ -54,7 +70,7 @@ const plugin: GraphQLSchemaPlugin<FormBuilderContext> = {
                 formBuilder: emptyResolver
             },
             FbQuery: {
-                version: async (root, args, context) => {
+                system: async (root, args, context) => {
                     const { i18nContent, tenancy, formBuilder } = context;
 
                     if (!tenancy.getCurrentTenant() || !i18nContent.getLocale()) {
@@ -62,7 +78,7 @@ const plugin: GraphQLSchemaPlugin<FormBuilderContext> = {
                     }
 
                     try {
-                        return formBuilder.system.getVersion();
+                        return formBuilder.system.get();
                     } catch (e) {
                         return new ErrorResponse({
                             code: "FORM_BUILDER_ERROR",

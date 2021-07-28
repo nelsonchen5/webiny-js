@@ -160,6 +160,51 @@ class Policies {
             }
         });
     }
+    getFbInstallationLambdaPolicy(args: {
+        elasticSearchDomain: EsDomain;
+        dynamoDbTable: aws.dynamodb.Table;
+    }): aws.iam.Policy {
+        // TODO: Add cache
+        return new aws.iam.Policy("FbInstallationLambdaPolicy", {
+            description: "This policy enables access to Dynamodb",
+            policy: {
+                Version: "2012-10-17",
+                Statement: [
+                    {
+                        Sid: "AllowDynamoDBAccess",
+                        Effect: "Allow",
+                        Action: [
+                            "dynamodb:BatchGetItem",
+                            "dynamodb:BatchWriteItem",
+                            "dynamodb:PutItem",
+                            "dynamodb:DeleteItem",
+                            "dynamodb:GetItem",
+                            "dynamodb:Query",
+                            "dynamodb:UpdateItem"
+                        ],
+                        Resource: [
+                            pulumi.interpolate`${args.dynamoDbTable.arn}`,
+                            pulumi.interpolate`${args.dynamoDbTable.arn}/*`
+                        ]
+                    },
+                    {
+                        Sid: "PermissionForES",
+                        Effect: "Allow",
+                        Action: [
+                            "es:ESHttpDelete",
+                            "es:ESHttpPatch",
+                            "es:ESHttpPost",
+                            "es:ESHttpPut"
+                        ],
+                        Resource: [
+                            pulumi.interpolate`${args.elasticSearchDomain.arn}`,
+                            pulumi.interpolate`${args.elasticSearchDomain.arn}/*`
+                        ]
+                    }
+                ]
+            }
+        });
+    }
 
     getApiGraphqlLambdaPolicy({
         primaryDynamodbTable,

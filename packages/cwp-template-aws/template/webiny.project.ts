@@ -14,7 +14,10 @@ export default {
     cli: {
         plugins: [
             cliWorkspaces(),
-            cliPulumiDeploy(),
+            cliPulumiDeploy({
+                deploy: ["api", "apps/admin", "apps/website"],
+                destroy: ["apps/website", "apps/admin", "api"]
+            }),
             cliPageBuilder(),
             cliAwsTemplate(),
             cliScaffold(),

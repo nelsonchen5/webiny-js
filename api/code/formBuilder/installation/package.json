@@ -1,0 +1,19 @@
+{
+  "name": "api-form-builder-installation",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "yarn webiny run build",
+    "watch": "yarn webiny run watch"
+  },
+  "dependencies": {
+    "@webiny/api-form-builder": "^5.11.0",
+    "@webiny/db-dynamodb": "^5.11.0",
+    "@webiny/handler-aws": "^5.11.0",
+    "@webiny/handler-db": "^5.11.0",
+    "@webiny/handler-logs": "^5.11.0",
+    "@webiny/project-utils": "^5.11.0"
+  },
+  "devDependencies": {
+    "@webiny/cli": "^5.11.0"
+  }
+}

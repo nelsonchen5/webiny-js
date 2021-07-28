@@ -143,9 +143,21 @@ export type FormsCRUD = {
     deleteSubmission(formId: string, submissionId: string): Promise<boolean>;
 };
 
+export type System = {
+    version?: string;
+    installation?: {
+        status: "pending" | "completed" | "error";
+        error?: {
+            data: Record<string, any>;
+            code: string;
+            message: string;
+        };
+    };
+};
+
 export type SystemCRUD = {
-    getVersion(): Promise<string>;
-    setVersion(version: string): Promise<void>;
+    get(): Promise<System>;
+    set(system: System): Promise<void>;
     install(args: { domain?: string }): Promise<void>;
     upgrade(version: string, data?: Record<string, any>): Promise<boolean>;
 };

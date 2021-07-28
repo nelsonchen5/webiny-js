@@ -65,6 +65,8 @@ export default {
 
                     const [uniqueId, version] = id.split("#");
 
+                    const formsClient = new FormsDatabaseClient({locale, tenant})
+                    formClient.byId(id)
                     const [[form]] = await db.read<FbForm>({
                         ...defaults.db,
                         query: {

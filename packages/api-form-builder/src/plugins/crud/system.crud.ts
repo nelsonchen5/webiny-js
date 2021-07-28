@@ -3,153 +3,119 @@ import { NotAuthorizedError } from "@webiny/api-security";
 import { UpgradePlugin } from "@webiny/api-upgrade/types";
 import { getApplicablePlugin } from "@webiny/api-upgrade";
 import defaults from "./defaults";
-import { FormBuilderContext, Settings } from "../../types";
+import { FormBuilderContext, System } from "../../types";
+import { HandlerArgs } from "../../installation";
+import { ContextPlugin } from "@webiny/handler/plugins/ContextPlugin";
 
-export default {
-    type: "context",
-    apply(context: FormBuilderContext) {
-        const { tenancy } = context;
-        const keys = () => ({ PK: `T#${tenancy.getCurrentTenant().id}#SYSTEM`, SK: "FB" });
+export default options => new ContextPlugin<FormBuilderContext>(context => {
+    const { tenancy, db, i18n } = context;
 
-        context.formBuilder = {
-            ...context.formBuilder,
-            system: {
-                async getVersion() {
-                    const { db } = context;
+    // Either read locale and tenant from passed options, or read it from context.
+    let locale = options.locale;
+    if (!locale) {
+        locale = context.i18nContent.getLocale()?.code;
+    }
 
-                    const [[system]] = await db.read({
+    let tenant = options.tenant;
+    if (!tenant) {
+        tenant = context.tenancy.getCurrentTenant()?.id;
+    }
+
+    const keys = () => ({ PK: `T#${tenant}#SYSTEM`, SK: "FB" });
+
+    // const keys = () => ({ PK: `T#${tenancy.getCurrentTenant().id}#SYSTEM`, SK: "FB" });
+
+    context.formBuilder = {
+        ...context.formBuilder,
+        system: {
+            // Renamed this to just `get` and `set`, so version and installation status can be both
+            // pulled from with as single method, instead of having `getVersion`, `getInstallation`,
+            // and so on.
+            async get() {
+                const [[system]] = await db.read<System>({
+                    ...defaults.db,
+                    query: keys()
+                });
+
+                return system;
+            },
+
+            async set(data) {
+                const system = this.get();
+                if (system) {
+                    await db.update({
                         ...defaults.db,
-                        query: keys()
+                        query: keys(),
+                        data: {
+                            ...system.data,
+                            ...data
+                        }
                     });
-
-                    return system ? system.version : null;
-                },
-                async setVersion(version: string) {
-                    const { db } = context;
-
-                    const [[system]] = await db.read({
+                } else {
+                    await db.create({
                         ...defaults.db,
-                        query: keys()
+                        data: {
+                            ...keys(),
+                            data
+                        }
                     });
-
-                    if (system) {
-                        await db.update({
-                            ...defaults.db,
-                            query: keys(),
-                            data: {
-                                version
-                            }
-                        });
-                    } else {
-                        await db.create({
-                            ...defaults.db,
-                            data: {
-                                ...keys(),
-                                version
-                            }
-                        });
+                }
+            },
+            async install({ domain }) {
+                const system = await this.get();
+                if (system && system.installation) {
+                    if (system.installation.status === "pending") {
+                        throw new Error(
+                            "Form builder installation is already in progress.",
+                            "FORM_BUILDER_INSTALL_ABORTED"
+                        );
                     }
-                },
-                async install({ domain }) {
-                    const { db, i18n, formBuilder, elasticsearch } = context;
 
-                    const version = await this.getVersion();
-                    if (version) {
+                    if (system.installation && system.installation.status !== "completed") {
                         throw new Error(
                             "Form builder is already installed.",
                             "FORM_BUILDER_INSTALL_ABORTED"
                         );
                     }
-
-                    // Prepare "settings" data
-                    const data: Partial<Settings> = {};
-
-                    if (domain) {
-                        data.domain = domain;
-                    }
-
-                    await formBuilder.settings.createSettings(data);
-
-                    // Create ES index if it doesn't already exist.
-                    try {
-                        const esIndex = defaults.es(context);
-                        const { body: exists } = await elasticsearch.indices.exists(esIndex);
-                        if (!exists) {
-                            await elasticsearch.indices.create({
-                                ...esIndex,
-                                body: {
-                                    // need this part for sorting to work on text fields
-                                    settings: {
-                                        analysis: {
-                                            analyzer: {
-                                                lowercase_analyzer: {
-                                                    type: "custom",
-                                                    filter: ["lowercase", "trim"],
-                                                    tokenizer: "keyword"
-                                                }
-                                            }
-                                        }
-                                    },
-                                    mappings: {
-                                        properties: {
-                                            property: {
-                                                type: "text",
-                                                fields: {
-                                                    keyword: {
-                                                        type: "keyword",
-                                                        ignore_above: 256
-                                                    }
-                                                },
-                                                analyzer: "lowercase_analyzer"
-                                            }
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    } catch (err) {
-                        await db.delete({
-                            ...defaults.db,
-                            query: {
-                                PK: `T#root#L#${i18n.getDefaultLocale().code}#FB#SETTINGS`,
-                                SK: "default"
-                            }
-                        });
-
-                        throw new Error(
-                            "Form builder failed to install!",
-                            "FORM_BUILDER_INSTALL_ABORTED",
-                            { reason: err.message }
-                        );
-                    }
-
-                    await formBuilder.system.setVersion(context.WEBINY_VERSION);
-                },
-                async upgrade(version) {
-                    const identity = context.security.getIdentity();
-                    if (!identity) {
-                        throw new NotAuthorizedError();
-                    }
-
-                    const upgradePlugins = context.plugins
-                        .byType<UpgradePlugin>("api-upgrade")
-                        .filter(pl => pl.app === "form-builder");
-
-                    const plugin = getApplicablePlugin({
-                        deployedVersion: context.WEBINY_VERSION,
-                        installedAppVersion: await this.getVersion(),
-                        upgradePlugins,
-                        upgradeToVersion: version
-                    });
-
-                    await plugin.apply(context);
-
-                    // Store new app version
-                    await this.setVersion(version);
-
-                    return true;
                 }
+
+                // Invoke the standalone "installation" handler.
+                await context.handlerClient.invoke<HandlerArgs>({
+                    await: false,
+                    name: process.env.FB_INSTALLATION_HANDLER,
+                    payload: {
+                        data: {
+                            domain,
+                            locale: i18n.getDefaultLocale().code,
+                            tenant: tenancy.getCurrentTenant().id
+                        }
+                    }
+                });
+            },
+            async upgrade(version) {
+                const identity = context.security.getIdentity();
+                if (!identity) {
+                    throw new NotAuthorizedError();
+                }
+
+                const upgradePlugins = context.plugins
+                    .byType<UpgradePlugin>("api-upgrade")
+                    .filter(pl => pl.app === "form-builder");
+
+                const plugin = getApplicablePlugin({
+                    deployedVersion: context.WEBINY_VERSION,
+                    installedAppVersion: await this.getVersion(),
+                    upgradePlugins,
+                    upgradeToVersion: version
+                });
+
+                await plugin.apply(context);
+
+                // Store new app version
+                await this.setVersion(version);
+
+                return true;
             }
-        };
-    }
-};
+        }
+    };
+});
